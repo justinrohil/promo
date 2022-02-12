@@ -9,10 +9,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Promotion {
-
-	String promoCode;
-	String skuIds;
+public class Item {
+	String itemId;
 	int quantity;
-	double price;
 }
