@@ -1,39 +1,19 @@
 package io.test.promo.service;
 
-import java.io.File;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.util.List;
 
 import io.test.promo.model.Cart;
+import io.test.promo.model.Promotion;
+import io.test.promo.model.Sku;
 
-public class PromotionService {
-
-	public double process(Cart cart) {
-		
-		return 0d;
-	}
-
-	public Cart readCart(String testPromotionFile) {
-		Reader reader = new CartReader();
-		File file = null;
-		try {
-			file = readFile(testPromotionFile);
-		} catch (URISyntaxException e) {
-			e.printStackTrace();
-		}
-		return reader.read(file);
-	}
+public interface PromotionService {
 	
+	Cart readCart(String path);
 	
-	private File readFile(String fileName) throws URISyntaxException {		
-		    ClassLoader classLoader = getClass().getClassLoader();		
-		    URL resource = classLoader.getResource(fileName);
-		    if (resource == null) {
-		        throw new IllegalArgumentException("file not found! " + fileName);
-		    }
+	double process(Cart cart);
 	
-		    return new File(resource.toURI());
-	}
-
+	List<Promotion> getPromotionList(String path);
+	
+	List<Sku> getSkuDetails(String path);
 
 }
