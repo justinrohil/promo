@@ -10,6 +10,8 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Item {
+	
 	String itemId;
-	int quantity;
+	int quantity;	
+	
 }

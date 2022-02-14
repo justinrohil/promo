@@ -1,4 +1,4 @@
-SKU_ID,PRICE
-A,50
-B,30
-C,20
+--SKU_ID;PRICE--
+A;50
+B;30
+C;20
