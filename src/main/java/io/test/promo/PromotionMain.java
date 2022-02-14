@@ -11,6 +11,7 @@ public class PromotionMain {
 
 	public static void main(String[] args) {
 		
+		
 		promotionService = new PromotionServiceImpl();
 		
 		Cart cart = promotionService.readCart(TEST_PROMOTION_FILE);

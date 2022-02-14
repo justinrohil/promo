@@ -6,7 +6,10 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import io.test.promo.model.Cart;
 import io.test.promo.model.Item;
@@ -20,16 +23,67 @@ public class PromotionServiceImpl implements PromotionService {
 	
 	@Override
 	public double process(Cart cart) {
+		double total = 0d;
 		List<Promotion> promotionList = getPromotionList(PROMOTION_FILE);
 		List<Sku> skuDetailList = getSkuDetails(SKU_DETAILS_FILE);
+		Map<String, Double> skuPriceMap = getskuPriceMap(skuDetailList);
+		List<Item> promoToBeApply = new ArrayList<Item>();
 		
 		List<Item> cartItems = cart.getItems();
+//		cartItems.forEach((t) -> {
+//			if(checkPromoCanApply(t.getItemId(),promotionList)) {
+//				promoToBeApply.add(t);
+//			}
+//			
+//		});
 		
-		return 0d;
+		if(promoToBeApply.size() == 0) {
+			total = getTotalWithoutPromo(skuPriceMap,cartItems);
+		}
+		
+		
+		return total;
 	}
 
 	
 	
+	private Map<String, Double> getskuPriceMap(List<Sku> skuDetailList) {		
+		return skuDetailList.stream().collect(Collectors.toMap(Sku::getSkuId, Sku::getPrice));
+	}
+
+
+
+	private double getTotalWithoutPromo(Map<String, Double> skuPriceMap, List<Item> cartItems) {
+		double totalAmount = 0;
+		for (Item item : cartItems) {
+			String sku = item.getItemId();
+			double price = skuPriceMap.get(sku);
+			totalAmount += (price*item.getQuantity());
+		}
+		return totalAmount;
+	}
+
+
+
+	private boolean checkPromoCanApply(String itemId, List<Promotion> promotionList) {
+		boolean promoCodeFound = false;		
+		for(Promotion t : promotionList) {
+			String skuIds = t.getSkuIds();
+			if(skuIds.contains(",")) {
+				List<String> split = Arrays.asList(skuIds.split(","));
+				if(split.contains(itemId)) {
+					promoCodeFound = true;
+				}				
+			}else if(skuIds.contains(itemId)){
+					promoCodeFound = true;
+				}
+			}
+		return promoCodeFound;
+		}
+
+
+
+
 	private File readFile(String fileName) throws URISyntaxException {		
 		    ClassLoader classLoader = getClass().getClassLoader();		
 		    URL resource = classLoader.getResource(fileName);
