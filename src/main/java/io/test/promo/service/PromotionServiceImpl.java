@@ -7,6 +7,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -20,7 +21,17 @@ public class PromotionServiceImpl implements PromotionService {
 
 	private static final String SKU_DETAILS_FILE = "sku-details";
 	private static final String PROMOTION_FILE = "promotion";
-	
+
+	boolean isPromoApplied = false;
+
+	public boolean isPromoApplied() {
+		return isPromoApplied;
+	}
+
+	public void setPromoApplied(boolean isPromoApplied) {
+		this.isPromoApplied = isPromoApplied;
+	}
+
 	@Override
 	public double process(Cart cart) {
 		double total = 0d;
@@ -28,81 +39,149 @@ public class PromotionServiceImpl implements PromotionService {
 		List<Sku> skuDetailList = getSkuDetails(SKU_DETAILS_FILE);
 		Map<String, Double> skuPriceMap = getskuPriceMap(skuDetailList);
 		List<Item> promoToBeApply = new ArrayList<Item>();
-		
+
 		List<Item> cartItems = cart.getItems();
-//		cartItems.forEach((t) -> {
-//			if(checkPromoCanApply(t.getItemId(),promotionList)) {
-//				promoToBeApply.add(t);
-//			}
-//			
-//		});
-		
-		if(promoToBeApply.size() == 0) {
-			total = getTotalWithoutPromo(skuPriceMap,cartItems);
+		cartItems.forEach((t) -> {
+			if (checkPromoCanApply(t.getItemId(), t.getQuantity(), promotionList, cartItems)) {
+				promoToBeApply.add(t);
+			}
+
+		});
+
+		if (promoToBeApply.size() == 0) {
+			total = getTotalWithoutPromo(skuPriceMap, cartItems);			
 		}
-		
-		
+
+		if (promoToBeApply.size() > 0) {
+			total = handlePromotion(cartItems, promoToBeApply, promotionList, skuPriceMap);
+		}
+
 		return total;
 	}
 
-	
-	
-	private Map<String, Double> getskuPriceMap(List<Sku> skuDetailList) {		
-		return skuDetailList.stream().collect(Collectors.toMap(Sku::getSkuId, Sku::getPrice));
+	private double handlePromotion(List<Item> cartItems, List<Item> promoToBeApply, List<Promotion> promotionList,
+			Map<String, Double> skuPriceMap) {
+		double total = 0;
+		for (Item cartItem : cartItems) {
+			if (promoToBeApply.contains(cartItem)  && !isPromoApplied()) {
+				Promotion promo = promotionList.stream().filter(t -> t.getSkuIds().contains(cartItem.getItemId()))
+						.findFirst().orElse(null);
+
+				if (promo != null) {
+
+					int maxPromoApplyCount = findMaxPromoApplyCount(cartItem, promo);
+					if (maxPromoApplyCount > 0) {
+						total += getTotalWithPromo(maxPromoApplyCount, cartItem, promo, skuPriceMap);
+						setPromoApplied(true);
+					}
+				}else {
+					total += (skuPriceMap.get(cartItem.getItemId()) * cartItem.getQuantity()); 
+				}
+
+			} else {
+				total += (skuPriceMap.get(cartItem.getItemId()) * cartItem.getQuantity());
+			}
+		}
+
+		return total;
 	}
 
+	private double getTotalWithPromo(int maxPromoApplyCount, Item cartItem, Promotion promo, Map<String, Double> skuPriceMap) {
+		double total = 0;
+		int balance = cartItem.getQuantity();
+		while (maxPromoApplyCount > 0) {
 
+			total += promo.getPrice();
+			balance -= promo.getQuantity();
+			maxPromoApplyCount--;
+		}
+
+		if (balance > 0) {
+			total += (skuPriceMap.get(cartItem.getItemId()) * balance);
+		}
+
+		return total;
+	}
+
+	private int findMaxPromoApplyCount(Item cartItem, Promotion promo) {
+		int count = 0;
+		if (!promo.getSkuIds().contains(",") && promo.getSkuIds().contains(cartItem.getItemId())) {
+			int cartCount = cartItem.getQuantity();
+			int promoQuantityCount = promo.getQuantity();
+
+			while (cartCount >= promoQuantityCount) {
+				count++;
+				cartCount -= promoQuantityCount;
+			}
+		}
+		return count;
+	}
+
+//	private Map<String, Map<Integer, Double>> getPromoMap(List<Promotion> promotionList, List<Item> cartItems) {
+//		 Map<String, Map<Integer, Double>> promoMap = new HashMap<String, Map<Integer,Double>>();
+//		 
+//		 List<String> cartItemIds = cartItems.stream().map(t -> t.getItemId()).collect(Collectors.toList());
+//		 for (Promotion promo : promotionList) {
+//			 if(cartItemIds.contains(promo.getSkuIds())) {
+//				 HashMap<Integer, Double> temp = new HashMap<Integer, Double>();
+//				 temp.put(promo., null)
+//				 promoMap.add(promo.getSkuIds(), )
+//			 }
+//		}
+//		 
+//		return null;
+//	}
+
+	private Map<String, Double> getskuPriceMap(List<Sku> skuDetailList) {
+		return skuDetailList.stream().collect(Collectors.toMap(Sku::getSkuId, Sku::getPrice));
+	}
 
 	private double getTotalWithoutPromo(Map<String, Double> skuPriceMap, List<Item> cartItems) {
 		double totalAmount = 0;
 		for (Item item : cartItems) {
 			String sku = item.getItemId();
 			double price = skuPriceMap.get(sku);
-			totalAmount += (price*item.getQuantity());
+			totalAmount += (price * item.getQuantity());
 		}
 		return totalAmount;
 	}
 
-
-
-	private boolean checkPromoCanApply(String itemId, List<Promotion> promotionList) {
-		boolean promoCodeFound = false;		
-		for(Promotion t : promotionList) {
+	private boolean checkPromoCanApply(String itemId, int quantity, List<Promotion> promotionList, List<Item> cartItems) {
+		boolean promoCodeFound = false;
+		for (Promotion t : promotionList) {
 			String skuIds = t.getSkuIds();
-			if(skuIds.contains(",")) {
+			if (skuIds.contains(",")) {
 				List<String> split = Arrays.asList(skuIds.split(","));
-				if(split.contains(itemId)) {
+				if (split.contains(itemId)) {
 					promoCodeFound = true;
 				}				
-			}else if(skuIds.contains(itemId)){
-					promoCodeFound = true;
-				}
+				
+			} else if (skuIds.contains(itemId) && quantity >= t.getQuantity()) {
+				promoCodeFound = true;
 			}
+		}
 		return promoCodeFound;
+	}
+
+	private File readFile(String fileName) throws URISyntaxException {
+		ClassLoader classLoader = getClass().getClassLoader();
+		URL resource = classLoader.getResource(fileName);
+		if (resource == null) {
+			throw new IllegalArgumentException("file not found! " + fileName);
 		}
 
-
-
-
-	private File readFile(String fileName) throws URISyntaxException {		
-		    ClassLoader classLoader = getClass().getClassLoader();		
-		    URL resource = classLoader.getResource(fileName);
-		    if (resource == null) {
-		        throw new IllegalArgumentException("file not found! " + fileName);
-		    }
-	
-		    return new File(resource.toURI());
+		return new File(resource.toURI());
 	}
-	
+
 	@Override
-	public Cart readCart(String path) {		
+	public Cart readCart(String path) {
 		Cart cart = new Cart();
 		List<Item> items = new ArrayList<>();
-		
+
 		try {
 			File file = readFile(path);
 			List<String> cartFile = Files.readAllLines(file.toPath());
-			
+
 			cartFile.forEach(t -> {
 				if (!t.startsWith("--") && t.contains(";")) {
 					String[] splittedString = t.split(";");
@@ -121,20 +200,19 @@ public class PromotionServiceImpl implements PromotionService {
 		return cart;
 	}
 
-
-
 	@Override
 	public List<Promotion> getPromotionList(String path) {
 		List<Promotion> promoList = new ArrayList<Promotion>();
-		
+
 		try {
 			File file = readFile(path);
 			List<String> promoFile = Files.readAllLines(file.toPath());
-			
+
 			promoFile.forEach(t -> {
 				if (!t.startsWith("--") && t.contains(";")) {
 					String[] promoArray = t.split(";");
-					Promotion promotion = new Promotion(promoArray[0],promoArray[1],Integer.parseInt(promoArray[2]),Double.parseDouble(promoArray[3]));
+					Promotion promotion = new Promotion(promoArray[0], promoArray[1], Integer.parseInt(promoArray[2]),
+							Double.parseDouble(promoArray[3]));
 					promoList.add(promotion);
 				}
 			});
@@ -142,25 +220,22 @@ public class PromotionServiceImpl implements PromotionService {
 		} catch (IOException | URISyntaxException e) {
 			e.printStackTrace();
 		}
-		
-		
+
 		return promoList;
 	}
-
-
 
 	@Override
 	public List<Sku> getSkuDetails(String path) {
 		List<Sku> skuList = new ArrayList<Sku>();
-		
+
 		try {
 			File file = readFile(path);
 			List<String> skuFile = Files.readAllLines(file.toPath());
-			
+
 			skuFile.forEach(t -> {
 				if (!t.startsWith("--") && t.contains(";")) {
 					String[] skuArray = t.split(";");
-					Sku sku = new Sku(skuArray[0],Double.parseDouble(skuArray[1]));
+					Sku sku = new Sku(skuArray[0], Double.parseDouble(skuArray[1]));
 					skuList.add(sku);
 				}
 			});
@@ -170,7 +245,5 @@ public class PromotionServiceImpl implements PromotionService {
 		}
 		return skuList;
 	}
-
-
 
 }
