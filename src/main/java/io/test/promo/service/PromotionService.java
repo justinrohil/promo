@@ -2,7 +2,6 @@ package io.test.promo.service;
 
 import java.util.List;
 
-import io.test.promo.model.Cart;
 import io.test.promo.model.Promotion;
 import io.test.promo.model.Sku;
 
