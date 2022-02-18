@@ -71,6 +71,9 @@ public class PromotionServiceImpl implements PromotionService {
 		return total;
 	}
 
+	/**
+	 *  returns list of promotion after reading the promotion file.
+	 */
 	@Override
 	public List<Promotion> getPromotionList(String path) {
 		List<Promotion> promoList = new ArrayList<Promotion>();
@@ -95,6 +98,9 @@ public class PromotionServiceImpl implements PromotionService {
 		return promoList;
 	}
 
+	/**
+	 * returns list of sku after reading the sku-details file
+	 */
 	@Override
 	public List<Sku> getSkuDetails(String path) {
 		List<Sku> skuList = new ArrayList<Sku>();
@@ -230,6 +236,14 @@ public class PromotionServiceImpl implements PromotionService {
 		return totalAmount;
 	}
 
+	/**
+	 * Return true if a promo can be applied to the cart item
+	 * @param itemId
+	 * @param quantity
+	 * @param promotionList
+	 * @param cartItems
+	 * @return
+	 */
 	private boolean checkPromoCanApply(String itemId, int quantity, List<Promotion> promotionList,
 			List<Item> cartItems) {
 		boolean promoCodeFound = false;
