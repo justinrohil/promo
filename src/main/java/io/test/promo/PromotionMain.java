@@ -8,12 +8,10 @@ public class PromotionMain {
 	private static final String TEST_PROMOTION_FILE = "test-cart";
 
 	public static void main(String[] args) {
-		
-		
+				
 		PromotionService promotionService = new PromotionServiceImpl();
 
-		System.out.println("Total : " + promotionService.process(TEST_PROMOTION_FILE));
-		
+		System.out.println("Total : " + promotionService.process(TEST_PROMOTION_FILE));		
 
 	}
 
