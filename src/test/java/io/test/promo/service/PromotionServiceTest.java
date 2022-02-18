@@ -6,10 +6,7 @@ import org.junit.jupiter.api.Test;
 
 class PromotionServiceTest {
 
-	@Test
-	void test() {
-		fail("Not yet implemented");
-	}
+
 	
 	@Test
 	void processTest() {

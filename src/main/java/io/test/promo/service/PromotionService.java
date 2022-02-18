@@ -8,9 +8,7 @@ import io.test.promo.model.Sku;
 
 public interface PromotionService {
 	
-	Cart readCart(String path);
-	
-	double process(Cart cart);
+	double process(String testPromotionFile);
 	
 	List<Promotion> getPromotionList(String path);
 	
